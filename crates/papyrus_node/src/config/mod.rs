@@ -11,7 +11,7 @@ use std::time::Duration;
 use std::{env, fs, io};
 use serde_json::value::Value;
 
-use clap::{arg, value_parser, Arg, ArgMatches, Command};
+use clap::{arg, value_parser, Arg, ArgMatches, Command, ArgAction};
 use file_config::FileConfigFormat;
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -103,18 +103,22 @@ impl BuilderConfig {
                .version(VERSION_FULL)
                .about("Papyrus is a StarkNet full node written in Rust.");
             //    .args(&[arg!(--cconfig_file [cconfig_file] "cconfig file")]).try_get_matches_from(env::args().into_iter())?;
-        // for (k, v) in self.config_norm.iter() {
-        //     let mut _arg = Arg::new(k.as_str());
-        //     if let Some(short) = &v.short {
-        //         _arg = _arg.short(*short).value_name(k);
-        //     }
-        //     if let Some(long) = &v.long {
-        //         _arg = _arg.long(long.as_str()).value_name(k);
-        //     } 
-        //     _args = _args.arg(_arg);
-        // }
+        for (k, v) in self.config_norm.iter() {
+            let mut _arg = Arg::new(k.as_str())
+                                    .action(ArgAction::Set);
+            if let Some(short) = &v.short {
+                _arg = _arg.short(*short);
+            }
+            if let Some(long) = &v.long {
+                _arg = _arg.long(long.as_str());
+            } 
+            if let Some(env) = &v.env {
+                _arg = _arg.env(env);
+            }
+            _args = _args.arg(_arg);
+        }
         // _args = _args.arg(arg!(--cconfig_file [cconfig_file] "cconfig file"));
-        // self.cla_config = _args.try_get_matches_from(env::args().into_iter())?;
+        self.cla_config = _args.try_get_matches_from(env::args().into_iter())?;
         Ok(self)
     }
 
@@ -156,47 +160,50 @@ pub struct Config {
     pub sync: Option<SyncConfig>,
 }
 
-// #[derive(Debug)]
-// #[derive(ConfigDerive)]
-// pub struct RetryConfigL {
-//     /// The initial waiting time in milliseconds.
-//     pub cc: Value,
-// }
+#[derive(Debug)]
+#[derive(ConfigDerive)]
+pub struct RetryConfigL {
+    pub chain_id: Value,
+    pub server_address: Value,
+    pub max_events_chunk_size: Value,
+    pub max_events_keys: Value,
+}
 
-// impl Default for RetryConfigL {
-//     fn default() -> Self {
-//         Self {
-//             cc: false.into(),
-//         }
-//     }
-// }
+#[derive(Debug)]
+#[derive(ConfigDerive)]
+pub struct CentralSourceConfigL {
+    pub concurrent_requests: Value,
+    pub url: Value,
+    pub retry_config: RetryConfigL,
+}
 
-// #[derive(Debug)]
-// #[derive(ConfigDerive)]
-// pub struct CentralSourceConfigL {
-//     pub concurrent_requests: Value,
-//     pub url: Value,
-//     pub retry_config: RetryConfigL,
-// }
+#[derive(Debug, ConfigDerive)]
+pub struct GatewayConfigL {
+    pub chain_id: Value,
+    pub server_address: Value,
+    pub max_events_chunk_size: Value,
+    pub max_events_keys: Value,
+}
 
-// impl Default for CentralSourceConfigL {
-//     fn default() -> Self {
-//         Self {
-//             concurrent_requests: serde_json::json!(3),
-//             url: serde_json::json!("123"),
-//             retry_config: RetryConfigL::default(),
-//         }
-//     }
-// }
+#[derive(Debug, ConfigDerive)]
+pub struct StorageConfigL {
+    pub db_config: DbConfigL,
+}
+
+#[derive(Debug, ConfigDerive)]
+pub struct DbConfigL {
+    pub path: Value,
+    pub min_size: Value,
+    pub max_size: Value,
+    pub growth_step: Value,
+}
 
 #[derive(Debug, ConfigDerive)]
 pub struct ConfigL {
-    pub gateway: Value,
-    pub central: Value,
-    pub monitoring_gateway: Value,
-    pub storage: Value,
-    /// None if the syncing should be disabled.
-    pub centrall: serde_json::Value,
+    pub path: Value,
+    pub gateway: GatewayConfigL,
+    pub central: CentralSourceConfigL,
+    pub storage: StorageConfigL,
 }
 
 impl Config {

@@ -9,7 +9,7 @@ normal = ["papyrus_base_layer"]
 [dependencies]
 anyhow.workspace = true
 async-stream.workspace = true
-clap = { version = "3.2.19", features = ["derive"] }
+clap = { version = "3.2.19", features = ["derive", "env"] }
 const_format.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
 config_derive = { path = "../config_derive" }
