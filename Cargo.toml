@@ -13,6 +13,7 @@ members = [
     "crates/papyrus_sync",
     "crates/starknet_client",
     "crates/test_utils",
+    "crates/config_derive",
 ]
 
 [workspace.dependencies]
@@ -44,6 +45,7 @@ libmdbx = { version = ">=0.1.5,<0.1.8" }
 mockall = { version = "0.11.2" }
 mockito = { version = "0.31.0" }
 once_cell = { version = "1.17.1" }
+lazy_static = { version = "1.4.0" }
 os_info = { version = "3.6.0" }
 paste = { version = "1.0.9" }
 rand = { version = "0.8.5" }

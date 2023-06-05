@@ -3,11 +3,13 @@ mod config_test;
 
 mod file_config;
 
+
 use std::collections::HashMap;
 use std::mem::discriminant;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{env, fs, io};
+use serde_json::value::Value;
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use file_config::FileConfigFormat;
@@ -22,8 +24,126 @@ use starknet_client::RetryConfig;
 
 use crate::version::VERSION_FULL;
 
+lazy_static! { static ref CONFIG: Config = ConfigBuilder::build(env::args().collect()).unwrap(); 
+    static ref CONFIGL: HashMap<String, Option<Value>> = BuilderConfig::build().unwrap();
+            }
+
 // The path of the default configuration file, provided as part of the crate.
-const CONFIG_FILE: &str = "config/config.yaml";
+const CONFIG_FILE: &str = "config/default.yaml";
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct ConfigAttr {
+    pub default: Option<Value>,
+    pub short: Option<char>,
+    pub long: Option<String>,
+    pub env: Option<String>,
+    pub description: Option<String>
+}
+
+#[derive(Default)]
+pub struct BuilderConfig {
+    config_norm: HashMap<String, ConfigAttr>,
+    cla_config: ArgMatches,
+    env_config: HashMap<String, Value>,
+    file_config: HashMap<String, Option<Value>>
+}
+
+#[test]
+fn this_this(){
+    let yaml_path = "config/default.yaml";
+    //let args = self.args.clone().expect("Config builder should have args.");
+    //if let Some(config_file) = args.try_get_one::<PathBuf>("config_file")? {
+    //    yaml_path =
+    //        config_file.to_str().ok_or(ConfigError::BadPath { path: config_file.clone() })?    ;
+    //}
+
+    let config = BuilderConfig::build();
+
+    match config {
+        Ok(content)=> {println!("{content:?}");}
+        Err(err) => {println!("{err:?}");}
+    }
+
+    let configl = ConfigL::new();
+    println!("{configl:?}");
+    // let yaml_contents = fs::read_to_string(yaml_path);
+    // match yaml_contents{
+    //     Ok(contents) => {
+    //         let from_yaml: Result<HashMap<String, ConfigAttr>, _> = serde_yaml::from_str(&contents);
+    //         println!("{from_yaml:?}");
+    //     }
+    //     Err(err) => {
+    //         println!("err");
+    //     }
+    // }
+}
+
+impl BuilderConfig {
+    fn load_norm(mut self) -> Result<Self, ConfigError> {
+        let yaml_contents = fs::read_to_string("/Users/miller/papyrus/config/default.yaml")?;
+        self.config_norm = serde_yaml::from_str(&yaml_contents)?;
+        Ok(self)
+    }
+
+    fn load_env(mut self) -> Result<Self, ConfigError> {
+        self.env_config = HashMap::new();
+        for (k, v) in self.config_norm.iter() {
+            if let Some(env) = &v.env {
+                let env_value = env::var(env);
+                if let Ok(value) = env_value {
+                    self.env_config.insert(k.clone(), serde_json::json!(value));
+                }  
+            }
+        }
+        Ok(self)
+    }
+
+    fn load_cla(mut self) -> Result<Self, ConfigError> {
+        let mut _args = Command::new("Papyrus",)
+               .version(VERSION_FULL)
+               .about("Papyrus is a StarkNet full node written in Rust.");
+            //    .args(&[arg!(--cconfig_file [cconfig_file] "cconfig file")]).try_get_matches_from(env::args().into_iter())?;
+        // for (k, v) in self.config_norm.iter() {
+        //     let mut _arg = Arg::new(k.as_str());
+        //     if let Some(short) = &v.short {
+        //         _arg = _arg.short(*short).value_name(k);
+        //     }
+        //     if let Some(long) = &v.long {
+        //         _arg = _arg.long(long.as_str()).value_name(k);
+        //     } 
+        //     _args = _args.arg(_arg);
+        // }
+        // _args = _args.arg(arg!(--cconfig_file [cconfig_file] "cconfig file"));
+        // self.cla_config = _args.try_get_matches_from(env::args().into_iter())?;
+        Ok(self)
+    }
+
+    fn load_file(mut self) -> Result<Self, ConfigError> {
+        self.file_config = HashMap::new();
+        let config_file: Option<&Value> = self.env_config.get("config_file")
+                                                          .or(self.cla_config.try_get_one::<Value>("config_file").ok().flatten())
+                                                          .or(self.config_norm.get("config_file").map(|v|v.default.as_ref()).flatten());
+        if let Some(file_path) = config_file {
+            let yaml_contents = fs::read_to_string(file_path.as_str().unwrap())?;
+            self.file_config = serde_yaml::from_str(&yaml_contents)?; 
+        }                                                                                        
+        Ok(self)
+    }
+
+    fn build() -> Result<HashMap<String, Option<Value>>, ConfigError> {
+        let builder = Self::default().load_norm()?.load_env()?.load_cla()?.load_file()?;
+        let mut config: HashMap<String, Option<Value>> = HashMap::new();
+        for (k, v) in builder.config_norm.iter() {
+            println!("{k:?}");
+            let value: Option<&Value> = builder.env_config.get(k)
+                                             .or(builder.cla_config.try_get_one::<Value>(k).ok().flatten())
+                                             .or(builder.file_config.get(k).map(|v|v.as_ref().unwrap()))
+                                             .or(v.default.as_ref());
+            config.insert(k.clone(),value.map(|v|v.clone()));
+        }
+        Ok(config)
+    }
+}
 
 /// The configurations of the various components of the node.
 #[derive(Deserialize, Serialize, Clone)]
@@ -34,6 +154,49 @@ pub struct Config {
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
     pub sync: Option<SyncConfig>,
+}
+
+// #[derive(Debug)]
+// #[derive(ConfigDerive)]
+// pub struct RetryConfigL {
+//     /// The initial waiting time in milliseconds.
+//     pub cc: Value,
+// }
+
+// impl Default for RetryConfigL {
+//     fn default() -> Self {
+//         Self {
+//             cc: false.into(),
+//         }
+//     }
+// }
+
+// #[derive(Debug)]
+// #[derive(ConfigDerive)]
+// pub struct CentralSourceConfigL {
+//     pub concurrent_requests: Value,
+//     pub url: Value,
+//     pub retry_config: RetryConfigL,
+// }
+
+// impl Default for CentralSourceConfigL {
+//     fn default() -> Self {
+//         Self {
+//             concurrent_requests: serde_json::json!(3),
+//             url: serde_json::json!("123"),
+//             retry_config: RetryConfigL::default(),
+//         }
+//     }
+// }
+
+#[derive(Debug, ConfigDerive)]
+pub struct ConfigL {
+    pub gateway: Value,
+    pub central: Value,
+    pub monitoring_gateway: Value,
+    pub storage: Value,
+    /// None if the syncing should be disabled.
+    pub centrall: serde_json::Value,
 }
 
 impl Config {
@@ -74,6 +237,17 @@ pub(crate) struct ConfigBuilder {
     chain_id: ChainId,
     config: Config,
 }
+
+//pub(crate) struct ConfigBuilderLL {
+//    config: ConfigLL
+//}
+//
+//impl ConfigBuilderLL {
+//    pub fn apply default(mut self) -> Self {
+//        self.config.chain_id = CONFIG.chain_id;
+//        
+//    }
+//}
 
 // Default configuration values.
 // TODO: Consider implementing Default for each component individually.

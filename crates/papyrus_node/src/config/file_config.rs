@@ -14,6 +14,7 @@ use starknet_client::RetryConfig;
 
 use crate::config::{Config, ConfigBuilder};
 
+
 // Defines the expected structure of the configuration file. All the fields are optional so the user
 // doesn't have to specify parameters that he doesn't wish to override (in that case the previous
 // value remains).
