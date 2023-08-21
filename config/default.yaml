@@ -1,0 +1,115 @@
+config_file:
+  default: "/Users/miller/papyrus/config/custom.yaml"
+  short: f
+  long: config_file
+  description: "Re-define the parameter's value users want to override."
+
+chain_id: 
+  default: SN_MAIN
+  short: c
+  long: chain_id
+  description: "select test chain or main chain." 
+
+concurrent_requests :
+  default: 10
+  long: concurrent_requests
+  description: "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks)." 
+
+url:
+  default: "https://alpha-mainnet.starknet.io/"
+  long: url
+  description: "Starknet feeder-gateway URL. It should match chain_id."
+
+http_headers:
+  default:
+    #header_name_1: header_value_1
+    #header_name_2: header_value_2
+  long: http_headers
+  description: "Optionally add headers to the http requests."  
+    
+retry_base_millis:
+  default: 30
+  long: retry_base_millis
+  descreption: "Base waiting time after a failed request. After that, the time increases exponentially." 
+
+retry_max_delay_millis:
+  default: 30000
+  long: retry_max_delay_millis
+  description: "max waiting time after a failed request." 
+
+max_retries: 
+  default: 10
+  long: max_retries
+  description: "Maximum number of retries before the node stops retrying."
+
+# JSON-RPC server.
+# For more details see https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json.
+server_address: 
+  default: 0.0.0.0:8080
+  long: server_address
+  env: SERVER_ADDRESS
+  description: "IP:PORT of the node's JSON-RPC server"
+
+max_events_chunk_size: 
+  default: 1000
+  long: max_events_chunk_size
+  description: "Maximum chunk size supported by the node in get_events requests."
+
+max_events_keys: 
+  default: 100
+  long: max_events_keys
+  description: "Maximum number of keys supported by the node in get_events requests."
+
+monitoring_server_address: 
+  default: 0.0.0.0:8081
+  long: monitoring_server_address
+  description: "Node's monitoring server address."
+
+# Node's storage configuration.
+path:
+  default: ./data
+  short: s
+  long: storage
+  description: "Path of the node's storage directory, the storage file path will be <path>/<chain_id>."
+
+min_size: 
+  default: 1048576
+  long: min_size
+  description: "The minimum size of the node's storage in bytes."
+
+max_size: 
+  default: 1099511627776
+  long: max_size
+  description: "The maxium size of the node's storage in bytes."
+
+growth_step: 
+  default: 67108864
+  long: growth_step
+  description: "The growth step in bytes, must be greater than zero to allow the database to grow."
+
+# Synchronization with Starknet.
+no_sync:
+  default: true
+  short: n
+  long: no_sync
+  description: "Optionally run without sync."
+
+block_propagation_sleep_duration_secs: 
+  default: 10
+  long: block_propagation_sleep_duration_secs
+  description: "Time before checking for a new block after the node is synchronized."
+    
+recoverable_error_sleep_duration_secs: 
+  default: 10
+  long: recoverable_error_sleep_duration_secs
+  description: "Waiting time before restarting synchronization after a recoverable error."
+
+blocks_max_stream_size: 
+  default: 1000
+  long: blocks_max_stream_size
+  description: "Max amount of blocks to download in a stream."
+
+state_updates_max_stream_size: 
+  default: 1000
+  long: state_updates_max_stream_size
+  description: "Max amount of state updates to download in a stream."
