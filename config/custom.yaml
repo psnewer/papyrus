@@ -1,0 +1,4 @@
+concurrent_requests :
+  default: 1000
+  long: concurrent_requests
+  description: "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks)." 
