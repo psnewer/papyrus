@@ -11,7 +11,7 @@ use std::time::Duration;
 use std::{env, fs, io};
 use serde_json::value::Value;
 
-use clap::{arg, value_parser, Arg, ArgMatches, Command, ArgAction};
+use clap::{arg, value_parser, Arg, ArgMatches, Command, ArgAction, builder::ValueParser};
 use file_config::FileConfigFormat;
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -43,7 +43,7 @@ pub struct ConfigAttr {
 #[derive(Default)]
 pub struct BuilderConfig {
     config_norm: HashMap<String, ConfigAttr>,
-    cla_config: ArgMatches,
+    cle_config: ArgMatches,
     env_config: HashMap<String, Value>,
     file_config: HashMap<String, Option<Value>>
 }
@@ -98,13 +98,18 @@ impl BuilderConfig {
         Ok(self)
     }
 
-    fn load_cla(mut self) -> Result<Self, ConfigError> {
+    fn parse_env_var(env: &str) -> Result<Value, std::io::Error> {
+            Ok(env.into())
+    }
+
+    fn load_cle(mut self) -> Result<Self, ConfigError> {
         let mut _args = Command::new("Papyrus",)
                .version(VERSION_FULL)
                .about("Papyrus is a StarkNet full node written in Rust.");
             //    .args(&[arg!(--cconfig_file [cconfig_file] "cconfig file")]).try_get_matches_from(env::args().into_iter())?;
         for (k, v) in self.config_norm.iter() {
             let mut _arg = Arg::new(k.as_str())
+                                    .value_parser(ValueParser::new(Self::parse_env_var))
                                     .action(ArgAction::Set);
             if let Some(short) = &v.short {
                 _arg = _arg.short(*short);
@@ -118,14 +123,25 @@ impl BuilderConfig {
             _args = _args.arg(_arg);
         }
         // _args = _args.arg(arg!(--cconfig_file [cconfig_file] "cconfig file"));
-        self.cla_config = _args.try_get_matches_from(env::args().into_iter())?;
+        let args = vec![
+        "Papyrus".to_owned(),
+        // "--config_file=conf.yaml".to_owned(),
+        "--chain_id=CHAIN_ID".to_owned(),
+        // "--server_address=IP:PORT".to_owned(),
+        "--http_headers=NAME_1:VALUE_1 NAME_2:VALUE_2".to_owned(),
+        "--storage=path".to_owned(),
+        "--block_propagation_sleep_duration_secs=1000".to_owned(),
+        // "--central=URL".to_owned(),
+    ];
+        self.cle_config = _args.try_get_matches_from(args)?;
+        // eprintln!("{:#?}", self.cle_config.try_get_one::<Value>("chain_id").ok().flatten());
         Ok(self)
     }
 
     fn load_file(mut self) -> Result<Self, ConfigError> {
         self.file_config = HashMap::new();
         let config_file: Option<&Value> = self.env_config.get("config_file")
-                                                          .or(self.cla_config.try_get_one::<Value>("config_file").ok().flatten())
+                                                          .or(self.cle_config.try_get_one::<Value>("config_file")?)
                                                           .or(self.config_norm.get("config_file").map(|v|v.default.as_ref()).flatten());
         if let Some(file_path) = config_file {
             let yaml_contents = fs::read_to_string(file_path.as_str().unwrap())?;
@@ -135,12 +151,11 @@ impl BuilderConfig {
     }
 
     fn build() -> Result<HashMap<String, Option<Value>>, ConfigError> {
-        let builder = Self::default().load_norm()?.load_env()?.load_cla()?.load_file()?;
+        let builder = Self::default().load_norm()?.load_cle()?.load_file()?;
         let mut config: HashMap<String, Option<Value>> = HashMap::new();
         for (k, v) in builder.config_norm.iter() {
             println!("{k:?}");
-            let value: Option<&Value> = builder.env_config.get(k)
-                                             .or(builder.cla_config.try_get_one::<Value>(k).ok().flatten())
+            let value: Option<&Value> = builder.cle_config.try_get_one::<Value>(k)?
                                              .or(builder.file_config.get(k).map(|v|v.as_ref().unwrap()))
                                              .or(v.default.as_ref());
             config.insert(k.clone(),value.map(|v|v.clone()));
